@@ -1,211 +1,353 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Belmopan Service Finder</title>
-  <style>
-    body {
-      font-family: "Inter", sans-serif;
-      background: #f9fafb;
-      color: #111827;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
-    }
-    h1 {
-      text-align: center;
-      color: #2563eb;
-    }
-    input, button {
-      display: block;
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 8px;
-      border: 1px solid #d1d5db;
-      font-size: 16px;
-    }
-    button {
-      background: #2563eb;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #1e40af;
-    }
-    #data p {
-      background: #f3f4f6;
-      padding: 8px;
-      border-radius: 6px;
-      margin-top: 5px;
-    }
-    .message {
-      text-align: center;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 6px;
-      display: none;
-    }
-    .success { background: #dcfce7; color: #166534; }
-    .error { background: #fee2e2; color: #991b1b; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Belmopan Service Admin/Submission</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#2563eb',
+                        'secondary-gray': '#f3f4f6',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom scrollbar for better visibility */
+        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .message {
+            display: none;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .success { background: #dcfce7; color: #166534; border: 1px solid #34d399; }
+        .error { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+    </style>
 </head>
-<body>
-  <h1>Belmopan Service Finder</h1>
+<body class="bg-gray-50 font-sans min-h-screen p-4 sm:p-8">
+    
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 bg-white/90 z-50 flex items-center justify-center transition-opacity duration-300">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-blue mx-auto"></div>
+            <p class="mt-4 text-xl font-semibold text-primary-blue">Initializing Application...</p>
+        </div>
+    </div>
 
-  <h2>🔐 Authentication</h2>
-  <input type="email" id="email" placeholder="Email" />
-  <input type="password" id="password" placeholder="Password" />
-  <button id="registerBtn">Register</button>
-  <button id="loginBtn">Login</button>
-  <button id="logoutBtn">Logout</button>
-  <div id="authMessage" class="message"></div>
+    <!-- Main Application Container -->
+    <div id="app-container" class="max-w-xl mx-auto opacity-0 transition-opacity duration-300">
+        <header class="mb-8 border-b pb-4 text-center">
+            <h1 class="text-3xl font-extrabold text-primary-blue flex items-center justify-center">
+                Belmopan Service Submission
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">Submit or view public vendor data.</p>
+        </header>
 
-  <hr>
+        <!-- Authentication Status (Replaces hardcoded login buttons) -->
+        <section class="mb-6 p-4 bg-white rounded-xl shadow-md">
+            <h2 class="text-xl font-bold mb-2 text-gray-800">🔐 Status</h2>
+            <div class="text-sm text-gray-600">
+                <p>Status: <span id="authStatus" class="font-semibold text-green-600">Connected</span></p>
+                <p class="truncate">User ID: <span id="userIdDisplay" class="font-mono text-xs bg-gray-200 px-2 py-0.5 rounded">Loading...</span></p>
+            </div>
+            <div id="authMessage" class="message"></div>
+        </section>
 
-  <h2>💾 Add a Service</h2>
-  <input type="text" id="name" placeholder="Service Name" />
-  <input type="text" id="phone" placeholder="Phone Number" />
-  <input type="text" id="location" placeholder="Location" />
-  <button id="saveBtn">Save Data</button>
-  <div id="saveMessage" class="message"></div>
+        <hr class="mb-6">
 
-  <hr>
+        <!-- Add a Service -->
+        <section class="mb-8 p-6 bg-white rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 text-primary-blue">💾 Add a Service</h2>
+            <input type="text" id="name" placeholder="Service Name (e.g., Jane's Tacos)" class="w-full p-3 mb-3 rounded-lg border border-gray-300 focus:ring-primary-blue focus:border-primary-blue">
+            <input type="text" id="contact" placeholder="Contact (Phone/Email)" class="w-full p-3 mb-3 rounded-lg border border-gray-300 focus:ring-primary-blue focus:border-primary-blue">
+            <input type="text" id="location" placeholder="Location/Address" class="w-full p-3 mb-3 rounded-lg border border-gray-300 focus:ring-primary-blue focus:border-primary-blue">
+            <select id="category" class="w-full p-3 mb-3 rounded-lg border border-gray-300 focus:ring-primary-blue focus:border-primary-blue bg-white">
+                <option value="">Select Category</option>
+                <option value="Food">Food & Beverage</option>
+                <option value="Government">Government & Public</option>
+                <option value="Health">Health & Wellness</option>
+                <option value="Other">Other</option>
+            </select>
+            <textarea id="description" rows="3" placeholder="Brief description of the service..." class="w-full p-3 mb-4 rounded-lg border border-gray-300 focus:ring-primary-blue focus:border-primary-blue"></textarea>
 
-  <h2>📋 Service List</h2>
-  <button id="loadBtn">Load Data</button>
-  <div id="data"></div>
+            <button id="saveBtn" class="w-full py-3 px-4 rounded-lg text-white font-semibold bg-primary-blue hover:bg-blue-700 transition duration-150 shadow-md">
+                Submit New Service
+            </button>
+            <div id="saveMessage" class="message"></div>
+        </section>
 
-  <script type="module">
-    // Import Firebase SDKs
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
-    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        <hr class="mb-6">
 
-    // ✅ Correct Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyDIAumG4P2VVTZiPHCCwsymlt9p8bTcJxA",
-      authDomain: "belmopanservicefinder.firebaseapp.com",
-      projectId: "belmopanservicefinder",
-      storageBucket: "belmopanservicefinder.appspot.com",
-      messagingSenderId: "527595910485",
-      appId: "1:527595910485:web:dec51922c6f9549cfaebdc",
-      measurementId: "G-QRD4ZSXCSM"
-    };
+        <!-- Service List -->
+        <section class="p-6 bg-white rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 text-primary-blue">📋 Submitted Service List (Real-time)</h2>
+            <div id="data" class="space-y-3 h-80 overflow-y-auto custom-scroll">
+                <p class="text-center text-gray-500 py-6" id="list-message">Loading data...</p>
+            </div>
+        </section>
+    </div>
 
-    // ✅ Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    console.log("✅ Firebase initialized successfully!");
+    <!-- Custom Modal for Alerts -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 items-center justify-center">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+            <h3 id="modal-title" class="text-xl font-bold mb-3">Alert</h3>
+            <p id="modal-body" class="mb-4 text-gray-700">Message content.</p>
+            <div class="flex justify-end">
+                <button id="modal-close" class="py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">Close</button>
+            </div>
+        </div>
+    </div>
 
-    // ----------------------------
-    // HELPER FUNCTION: Show message
-    // ----------------------------
-    function showMessage(id, text, type = "success") {
-      const el = document.getElementById(id);
-      el.textContent = text;
-      el.className = `message ${type}`;
-      el.style.display = "block";
-      setTimeout(() => (el.style.display = "none"), 4000);
-    }
+    <script type="module">
+        // --- Firebase Imports (v11.6.1) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // ----------------------------
-    // AUTH FUNCTIONS
-    // ----------------------------
-    async function registerUser(email, password) {
-      try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        showMessage("authMessage", "✅ Registered: " + userCredential.user.email);
-      } catch (error) {
-        showMessage("authMessage", "❌ " + error.message, "error");
-      }
-    }
+        // --- Global Variables (Canvas Environment) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-    async function loginUser(email, password) {
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        showMessage("authMessage", "✅ Logged in as: " + userCredential.user.email);
-      } catch (error) {
-        showMessage("authMessage", "❌ " + error.message, "error");
-      }
-    }
+        let app;
+        let db;
+        let auth;
+        let userId;
 
-    async function logoutUser() {
-      try {
-        await signOut(auth);
-        showMessage("authMessage", "👋 Logged out successfully");
-      } catch (error) {
-        showMessage("authMessage", "❌ " + error.message, "error");
-      }
-    }
+        // --- DOM Elements ---
+        const loadingScreen = document.getElementById('loading-screen');
+        const appContainer = document.getElementById('app-container');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const saveBtn = document.getElementById('saveBtn');
+        const saveMessage = document.getElementById('saveMessage');
+        const serviceListElement = document.getElementById('data');
+        const listMessage = document.getElementById('list-message');
 
-    // ----------------------------
-    // FIRESTORE FUNCTIONS
-    // ----------------------------
-    async function saveData() {
-      const name = document.getElementById("name").value.trim();
-      const phone = document.getElementById("phone").value.trim();
-      const location = document.getElementById("location").value.trim();
+        // Modal elements
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalClose = document.getElementById('modal-close');
 
-      if (!name || !phone || !location) {
-        showMessage("saveMessage", "Please fill in all fields", "error");
-        return;
-      }
+        // --- Utility Functions ---
+        
+        const showApp = () => {
+            loadingScreen.classList.add('opacity-0');
+            appContainer.classList.add('opacity-100');
+            setTimeout(() => loadingScreen.classList.add('hidden'), 300);
+        };
 
-      try {
-        const docRef = await addDoc(collection(db, "services"), {
-          name,
-          phone,
-          location,
-          createdAt: new Date()
+        const showMessage = (id, text, type = "success") => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = text;
+                el.className = `message ${type}`;
+                el.style.display = "block";
+                setTimeout(() => (el.style.display = "none"), 5000);
+            }
+        };
+
+        const showAlertModal = (title, body, type = 'error') => {
+            modalTitle.textContent = title;
+            modalBody.textContent = body;
+            modalTitle.className = `text-xl font-bold mb-3 ${type === 'error' ? 'text-red-600' : 'text-green-600'}`;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        modalClose.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         });
-        showMessage("saveMessage", "✅ Data saved with ID: " + docRef.id);
-        document.getElementById("name").value = "";
-        document.getElementById("phone").value = "";
-        document.getElementById("location").value = "";
-      } catch (error) {
-        showMessage("saveMessage", "❌ " + error.message, "error");
-      }
-    }
 
-    async function getData() {
-      try {
-        const querySnapshot = await getDocs(collection(db, "services"));
-        const output = document.getElementById("data");
-        output.innerHTML = "";
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          output.innerHTML += `<p><b>${data.name}</b> - ${data.phone} (${data.location})</p>`;
-        });
-      } catch (error) {
-        showMessage("saveMessage", "❌ " + error.message, "error");
-      }
-    }
+        // --- Firestore Management ---
 
-    // ----------------------------
-    // EVENT LISTENERS
-    // ----------------------------
-    window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("registerBtn").addEventListener("click", () => {
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-        registerUser(email, password);
-      });
+        const getVendorCollectionRef = () => {
+            // Path: /artifacts/{appId}/public/data/vendors
+            // This is the public collection used by the Finder App
+            return collection(db, 'artifacts', appId, 'public', 'data', 'vendors');
+        };
 
-      document.getElementById("loginBtn").addEventListener("click", () => {
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-        loginUser(email, password);
-      });
+        async function saveData() {
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Submitting...";
+            
+            const name = document.getElementById("name").value.trim();
+            const contact = document.getElementById("contact").value.trim();
+            const location = document.getElementById("location").value.trim();
+            const category = document.getElementById("category").value;
+            const description = document.getElementById("description").value.trim();
 
-      document.getElementById("logoutBtn").addEventListener("click", logoutUser);
-      document.getElementById("saveBtn").addEventListener("click", saveData);
-      document.getElementById("loadBtn").addEventListener("click", getData);
-    });
-  </script>
+            if (!name || !contact || !location || !category || !description) {
+                showMessage("saveMessage", "Please fill in all fields (Name, Contact, Location, Category, Description).", "error");
+                saveBtn.disabled = false;
+                saveBtn.textContent = "Submit New Service";
+                return;
+            }
+
+            try {
+                const docRef = await addDoc(getVendorCollectionRef(), {
+                    name,
+                    contact,
+                    location,
+                    category,
+                    description,
+                    // New submissions are pending by default
+                    approved: false, 
+                    submittedBy: userId,
+                    createdAt: serverTimestamp()
+                });
+
+                showMessage("saveMessage", `✅ Service "${name}" submitted for approval. ID: ${docRef.id}`, "success");
+                
+                // Clear form fields
+                document.getElementById("name").value = "";
+                document.getElementById("contact").value = "";
+                document.getElementById("location").value = "";
+                document.getElementById("category").value = "";
+                document.getElementById("description").value = "";
+
+            } catch (error) {
+                console.error("Error saving service:", error);
+                showMessage("saveMessage", "❌ Submission failed. Check console for details.", "error");
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "Submit New Service";
+            }
+        }
+        
+        function setupRealtimeListener() {
+             // We listen to ALL vendors to see the submission status
+            const vendorsRef = getVendorCollectionRef();
+            
+            onSnapshot(vendorsRef, (snapshot) => {
+                const output = serviceListElement;
+                output.innerHTML = "";
+                const vendors = [];
+
+                snapshot.forEach((doc) => {
+                    vendors.push({ id: doc.id, ...doc.data() });
+                });
+
+                if (vendors.length === 0) {
+                    listMessage.textContent = 'No services have been submitted yet.';
+                    output.appendChild(listMessage);
+                    return;
+                }
+                
+                // Sort by creation time (newest first)
+                vendors.sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
+
+
+                vendors.forEach((data) => {
+                    const statusClass = data.approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                    const statusText = data.approved ? 'Approved' : 'Pending Review';
+
+                    const card = document.createElement('div');
+                    card.className = "p-4 border-l-4 rounded-lg shadow-sm transition duration-150 ease-in-out " + (data.approved ? 'border-green-500 bg-white' : 'border-yellow-500 bg-gray-50');
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center mb-1">
+                            <h3 class="text-lg font-bold text-gray-800">${data.name}</h3>
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${statusText}</span>
+                        </div>
+                        <p class="text-sm text-gray-600">
+                            <strong>Contact:</strong> ${data.contact || 'N/A'}
+                        </p>
+                        <p class="text-sm text-gray-600 mb-2">
+                            <strong>Location:</strong> ${data.location || 'N/A'}
+                        </p>
+                        <p class="text-xs text-gray-500 truncate">
+                            <strong>ID:</strong> ${data.id}
+                        </p>
+                    `;
+                    output.appendChild(card);
+                });
+                listMessage.style.display = 'none';
+            }, (error) => {
+                console.error("Firestore realtime listener failed:", error);
+                showAlertModal('Realtime Error', 'Could not load the service list. Check your connection.', 'error');
+            });
+        }
+
+        // --- Core Initialization ---
+
+        async function initFirebaseAndApp() {
+            try {
+                if (!firebaseConfig) {
+                    throw new Error("Firebase configuration is not defined. Cannot initialize.");
+                }
+                
+                setLogLevel('debug');
+                
+                // 1. Initialize Firebase
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // 2. Authentication
+                await new Promise(resolve => {
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            userIdDisplay.textContent = userId;
+                            resolve();
+                        } else {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                const anonUser = await signInAnonymously(auth);
+                                userId = anonUser.user.uid;
+                                userIdDisplay.textContent = `${userId} (Anon)`;
+                            }
+                            // Re-check auth state after sign-in attempt
+                            onAuthStateChanged(auth, (u) => {
+                                if(u) {
+                                    userId = u.uid;
+                                    userIdDisplay.textContent = userId;
+                                }
+                                resolve();
+                            });
+                        }
+                    });
+                });
+                
+                // 3. Set up listeners and finalize UI
+                setupRealtimeListener();
+                saveBtn.addEventListener("click", saveData);
+                showApp();
+
+            } catch (error) {
+                console.error("CRITICAL INITIALIZATION ERROR:", error);
+                loadingScreen.innerHTML = `
+                    <div class="p-6 bg-red-100 border-l-4 border-red-500 text-red-700 max-w-xl mx-auto rounded-lg shadow-lg">
+                        <p class="font-bold text-lg">Application Startup Failed</p>
+                        <p class="text-sm mt-2">Could not connect to the database. Please check the console for critical error details.</p>
+                        <p class="mt-4 font-mono text-xs break-all">Error: ${error.message}</p>
+                    </div>
+                `;
+                loadingScreen.classList.remove('opacity-0');
+                loadingScreen.classList.remove('hidden');
+                loadingScreen.classList.add('flex');
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", initFirebaseAndApp);
+    </script>
 </body>
 </html>
