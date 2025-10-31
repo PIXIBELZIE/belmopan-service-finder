@@ -141,10 +141,26 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // --- Global Variables (Canvas Environment) ---
+        // --- Fallback Firebase Configuration (Provided by User) ---
+        // This configuration will be used if the environment variable is not set correctly.
+        const fallbackFirebaseConfig = {
+            apiKey: "AIzaSyDIAumG4P2VVTZiPHCCwsymlt9p8bTcJxA",
+            authDomain: "belmopanservicefinder.firebaseapp.com",
+            projectId: "belmopanservicefinder",
+            storageBucket: "belmopanservicefinder.firebasestorage.app",
+            messagingSenderId: "527595910485",
+            appId: "1:527595910485:web:dec51922c6f9549cfaebdc",
+            measurementId: "G-QRD4ZSXCSM"
+        };
+        
+        // --- Global Variables (Canvas Environment or Fallback) ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Use environment config if available, otherwise use the robust fallback config
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : fallbackFirebaseConfig;
 
         let app;
         let db;
@@ -217,7 +233,9 @@
 
         const getVendorCollectionRef = () => {
             // Public data path: /artifacts/{appId}/public/data/vendors
-            return collection(db, 'artifacts', appId, 'public', 'data', 'vendors');
+            // We use the projectId from the config as a safeguard for appId if the environment variable fails
+            const safeAppId = firebaseConfig.projectId || appId;
+            return collection(db, 'artifacts', safeAppId, 'public', 'data', 'vendors');
         };
 
         const saveVendor = async (vendorData) => {
@@ -456,15 +474,10 @@
         // --- Core Firebase Initialization Logic (Self-Executing Function) ---
         (async () => {
             try {
-                // 1. Check Config
-                if (!firebaseConfig) {
-                    throw new Error("Firebase configuration (__firebase_config) is not defined.");
-                }
-                
                 // Set Firebase logging level to help with debugging
                 setLogLevel('debug');
                 
-                // 2. Initialize Firebase
+                // 1. Initialize Firebase (firebaseConfig is now guaranteed to exist)
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -472,7 +485,7 @@
                 // Set persistence to session to avoid re-auth on every refresh
                 await setPersistence(auth, browserSessionPersistence);
 
-                // 3. Authentication
+                // 2. Authentication
                 let user;
                 if (initialAuthToken) {
                     user = (await signInWithCustomToken(auth, initialAuthToken)).user;
@@ -482,10 +495,10 @@
                     console.warn("No custom token found. Signed in anonymously.");
                 }
 
-                // 4. Get User ID (guaranteed after sign-in)
+                // 3. Get User ID (guaranteed after sign-in)
                 userId = user.uid || crypto.randomUUID();
                 
-                // 5. Start the Application
+                // 4. Start the Application
                 initApp();
 
             } catch (error) {
