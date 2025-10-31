@@ -41,7 +41,7 @@
     <div id="app-container" class="max-w-7xl mx-auto opacity-0 transition-opacity duration-300">
         <header class="mb-8 border-b pb-4">
             <h1 class="text-3xl font-extrabold text-gray-800 flex items-center">
-                <svg class="w-8 h-8 mr-2 text-primary-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                <svg class="w-8 h-8 mr-2 text-primary-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 Belmopan Service Admin
             </h1>
             <p class="text-sm text-gray-500 mt-1">
@@ -138,8 +138,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- Fallback Firebase Configuration (Provided by User) ---
         const fallbackFirebaseConfig = {
@@ -473,15 +473,20 @@
         // --- Core Firebase Initialization Logic (Self-Executing Function) ---
         (async () => {
             try {
-                // 1. Initialize Firebase (firebaseConfig is now guaranteed to exist)
+                // CRITICAL STEP: Log the configuration being used
+                console.log("Final Firebase Config Used:", firebaseConfig);
+
+                // 1. Initialize Firebase 
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // NOTE: Removed setPersistence to avoid potential auth/configuration-not-found error in certain environments.
-                // await setPersistence(auth, browserSessionPersistence); 
+                // 2. CRITICAL DEBUGGING STEP: Set Firebase Auth/Firestore log level to Debug
+                setLogLevel('debug');
+                console.log("Firebase logging set to 'debug'. Check console for detailed Auth messages.");
 
-                // 2. Authentication
+
+                // 3. Authentication
                 let user;
                 if (initialAuthToken) {
                     user = (await signInWithCustomToken(auth, initialAuthToken)).user;
@@ -491,10 +496,10 @@
                     console.warn("No custom token found. Signed in anonymously.");
                 }
 
-                // 3. Get User ID (guaranteed after sign-in)
+                // 4. Get User ID (guaranteed after sign-in)
                 userId = user.uid || crypto.randomUUID();
                 
-                // 4. Start the Application
+                // 5. Start the Application
                 initApp();
 
             } catch (error) {
@@ -504,6 +509,7 @@
                         <p class="font-bold text-lg">Initialization Failed</p>
                         <p class="text-sm mt-2">Could not connect to the database. Please check the console for critical error details.</p>
                         <p class="mt-4 font-mono text-xs break-all">Error: ${error.message}</p>
+                        <p class="mt-4 font-bold text-xs">Troubleshooting Tip: Check the console for "Final Firebase Config Used:" to ensure 'authDomain' is defined.</p>
                     </div>
                 `;
                 loadingScreen.classList.remove('opacity-0');
