@@ -138,12 +138,10 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // REMOVED 'setLogLevel' from this import to fix the SyntaxError
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- Fallback Firebase Configuration (Provided by User) ---
-        // This configuration will be used if the environment variable is not set correctly.
         const fallbackFirebaseConfig = {
             apiKey: "AIzaSyDIAumG4P2VVTZiPHCCwsymlt9p8bTcJxA",
             authDomain: "belmopanservicefinder.firebaseapp.com",
@@ -475,15 +473,13 @@
         // --- Core Firebase Initialization Logic (Self-Executing Function) ---
         (async () => {
             try {
-                // setLogLevel('debug'); // Removed as it caused a module error. Debugging relies on console.log now.
-                
                 // 1. Initialize Firebase (firebaseConfig is now guaranteed to exist)
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // Set persistence to session to avoid re-auth on every refresh
-                await setPersistence(auth, browserSessionPersistence);
+                // NOTE: Removed setPersistence to avoid potential auth/configuration-not-found error in certain environments.
+                // await setPersistence(auth, browserSessionPersistence); 
 
                 // 2. Authentication
                 let user;
