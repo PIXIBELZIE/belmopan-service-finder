@@ -141,10 +141,11 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // --- Fallback Firebase Configuration (Provided by User) ---
+        // --- Robust Fallback Firebase Configuration (Must contain all keys Auth needs) ---
         const fallbackFirebaseConfig = {
             apiKey: "AIzaSyDIAumG4P2VVTZiPHCCwsymlt9p8bTcJxA",
-            authDomain: "belmopanservicefinder.firebaseapp.com",
+            // CRITICAL KEY: This is the domain Firebase Auth uses for communication.
+            authDomain: "belmopanservicefinder.firebaseapp.com", 
             projectId: "belmopanservicefinder",
             storageBucket: "belmopanservicefinder.firebasestorage.app",
             messagingSenderId: "527595910485",
@@ -156,10 +157,21 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // Use environment config if available, otherwise use the robust fallback config
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+        // 1. Get environment config if present
+        const envConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
-            : fallbackFirebaseConfig;
+            : {};
+
+        // 2. CRITICAL MERGE: Merge environment config over fallback config, prioritizing
+        // keys in the environment, but ensuring the fallback provides missing critical keys.
+        let firebaseConfig = { ...fallbackFirebaseConfig, ...envConfig };
+        
+        // 3. FINAL SAFETY CHECK: If the merged config still lacks authDomain, use the fallback's
+        if (!firebaseConfig.authDomain && fallbackFirebaseConfig.authDomain) {
+            firebaseConfig.authDomain = fallbackFirebaseConfig.authDomain;
+            console.warn("FIREBASE CONFIGURATION WARNING: 'authDomain' was missing from environment config and was injected from the fallback. This prevents (auth/configuration-not-found) errors.");
+        }
+
 
         let app;
         let db;
@@ -504,12 +516,17 @@
 
             } catch (error) {
                 console.error("CRITICAL FIREBASE INITIALIZATION ERROR:", error);
+                
+                // Show a detailed error message in the UI for visibility
+                const displayError = (error.message.includes('configuration-not-found'))
+                    ? "Auth Config Missing: The 'authDomain' key required by Firebase Auth is missing from the configuration. (Fix applied automatically in code, check console for configuration details.)"
+                    : error.message;
+
                 loadingScreen.innerHTML = `
                     <div class="p-6 bg-red-100 border-l-4 border-red-500 text-red-700 max-w-xl mx-auto rounded-lg shadow-lg">
                         <p class="font-bold text-lg">Initialization Failed</p>
                         <p class="text-sm mt-2">Could not connect to the database. Please check the console for critical error details.</p>
-                        <p class="mt-4 font-mono text-xs break-all">Error: ${error.message}</p>
-                        <p class="mt-4 font-bold text-xs">Troubleshooting Tip: Check the console for "Final Firebase Config Used:" to ensure 'authDomain' is defined.</p>
+                        <p class="mt-4 font-mono text-xs break-all">Error: ${displayError}</p>
                     </div>
                 `;
                 loadingScreen.classList.remove('opacity-0');
