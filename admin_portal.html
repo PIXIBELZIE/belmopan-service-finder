@@ -3,118 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Belmopan Service Finder - Firebase Demo</title>
-  <script type="module">
-    // Import Firebase SDKs (v9 modular)
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
-    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-
-    // Your web app's Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyDIAumG4P2VVTZiPHCCwsymlt9p8bTcJxA",
-      authDomain: "belmopanservicefinder.firebaseapp.com",
-      projectId: "belmopanservicefinder",
-      storageBucket: "belmopanservicefinder.firebasestorage.app",
-      messagingSenderId: "527595910485",
-      appId: "1:527595910485:web:dec51922c6f9549cfaebdc",
-      measurementId: "G-QRD4ZSXCSM"
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
-    // ----------------------------
-    // AUTH FUNCTIONS
-    // ----------------------------
-    async function registerUser(email, password) {
-      try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        alert("✅ User registered: " + userCredential.user.email);
-      } catch (error) {
-        alert("❌ " + error.message);
-      }
-    }
-
-    async function loginUser(email, password) {
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        alert("✅ Logged in as: " + userCredential.user.email);
-      } catch (error) {
-        alert("❌ " + error.message);
-      }
-    }
-
-    async function logoutUser() {
-      try {
-        await signOut(auth);
-        alert("👋 User logged out");
-      } catch (error) {
-        alert("❌ " + error.message);
-      }
-    }
-
-    // ----------------------------
-    // FIRESTORE FUNCTIONS
-    // ----------------------------
-    async function saveData() {
-      const name = document.getElementById("name").value;
-      const phone = document.getElementById("phone").value;
-      const location = document.getElementById("location").value;
-
-      try {
-        const docRef = await addDoc(collection(db, "services"), {
-          name,
-          phone,
-          location,
-          createdAt: new Date()
-        });
-        alert("✅ Data saved with ID: " + docRef.id);
-      } catch (error) {
-        alert("❌ " + error.message);
-      }
-    }
-
-    async function getData() {
-      try {
-        const querySnapshot = await getDocs(collection(db, "services"));
-        const output = document.getElementById("data");
-        output.innerHTML = "";
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          output.innerHTML += `<p><b>${data.name}</b> - ${data.phone} (${data.location})</p>`;
-        });
-      } catch (error) {
-        alert("❌ " + error.message);
-      }
-    }
-
-    // ----------------------------
-    // EVENT LISTENERS
-    // ----------------------------
-    window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("registerBtn").addEventListener("click", () => {
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-        registerUser(email, password);
-      });
-
-      document.getElementById("loginBtn").addEventListener("click", () => {
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-        loginUser(email, password);
-      });
-
-      document.getElementById("logoutBtn").addEventListener("click", logoutUser);
-      document.getElementById("saveBtn").addEventListener("click", saveData);
-      document.getElementById("loadBtn").addEventListener("click", getData);
-    });
-  </script>
-
+  <title>Belmopan Service Finder</title>
   <style>
     body {
       font-family: "Inter", sans-serif;
@@ -151,6 +40,15 @@
       border-radius: 6px;
       margin-top: 5px;
     }
+    .message {
+      text-align: center;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      display: none;
+    }
+    .success { background: #dcfce7; color: #166534; }
+    .error { background: #fee2e2; color: #991b1b; }
   </style>
 </head>
 <body>
@@ -162,6 +60,7 @@
   <button id="registerBtn">Register</button>
   <button id="loginBtn">Login</button>
   <button id="logoutBtn">Logout</button>
+  <div id="authMessage" class="message"></div>
 
   <hr>
 
@@ -170,11 +69,143 @@
   <input type="text" id="phone" placeholder="Phone Number" />
   <input type="text" id="location" placeholder="Location" />
   <button id="saveBtn">Save Data</button>
+  <div id="saveMessage" class="message"></div>
 
   <hr>
 
   <h2>📋 Service List</h2>
   <button id="loadBtn">Load Data</button>
   <div id="data"></div>
+
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+    // ✅ Correct Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDIAumG4P2VVTZiPHCCwsymlt9p8bTcJxA",
+      authDomain: "belmopanservicefinder.firebaseapp.com",
+      projectId: "belmopanservicefinder",
+      storageBucket: "belmopanservicefinder.appspot.com",
+      messagingSenderId: "527595910485",
+      appId: "1:527595910485:web:dec51922c6f9549cfaebdc",
+      measurementId: "G-QRD4ZSXCSM"
+    };
+
+    // ✅ Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    console.log("✅ Firebase initialized successfully!");
+
+    // ----------------------------
+    // HELPER FUNCTION: Show message
+    // ----------------------------
+    function showMessage(id, text, type = "success") {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = `message ${type}`;
+      el.style.display = "block";
+      setTimeout(() => (el.style.display = "none"), 4000);
+    }
+
+    // ----------------------------
+    // AUTH FUNCTIONS
+    // ----------------------------
+    async function registerUser(email, password) {
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        showMessage("authMessage", "✅ Registered: " + userCredential.user.email);
+      } catch (error) {
+        showMessage("authMessage", "❌ " + error.message, "error");
+      }
+    }
+
+    async function loginUser(email, password) {
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        showMessage("authMessage", "✅ Logged in as: " + userCredential.user.email);
+      } catch (error) {
+        showMessage("authMessage", "❌ " + error.message, "error");
+      }
+    }
+
+    async function logoutUser() {
+      try {
+        await signOut(auth);
+        showMessage("authMessage", "👋 Logged out successfully");
+      } catch (error) {
+        showMessage("authMessage", "❌ " + error.message, "error");
+      }
+    }
+
+    // ----------------------------
+    // FIRESTORE FUNCTIONS
+    // ----------------------------
+    async function saveData() {
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const location = document.getElementById("location").value.trim();
+
+      if (!name || !phone || !location) {
+        showMessage("saveMessage", "Please fill in all fields", "error");
+        return;
+      }
+
+      try {
+        const docRef = await addDoc(collection(db, "services"), {
+          name,
+          phone,
+          location,
+          createdAt: new Date()
+        });
+        showMessage("saveMessage", "✅ Data saved with ID: " + docRef.id);
+        document.getElementById("name").value = "";
+        document.getElementById("phone").value = "";
+        document.getElementById("location").value = "";
+      } catch (error) {
+        showMessage("saveMessage", "❌ " + error.message, "error");
+      }
+    }
+
+    async function getData() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "services"));
+        const output = document.getElementById("data");
+        output.innerHTML = "";
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          output.innerHTML += `<p><b>${data.name}</b> - ${data.phone} (${data.location})</p>`;
+        });
+      } catch (error) {
+        showMessage("saveMessage", "❌ " + error.message, "error");
+      }
+    }
+
+    // ----------------------------
+    // EVENT LISTENERS
+    // ----------------------------
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("registerBtn").addEventListener("click", () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        registerUser(email, password);
+      });
+
+      document.getElementById("loginBtn").addEventListener("click", () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        loginUser(email, password);
+      });
+
+      document.getElementById("logoutBtn").addEventListener("click", logoutUser);
+      document.getElementById("saveBtn").addEventListener("click", saveData);
+      document.getElementById("loadBtn").addEventListener("click", getData);
+    });
+  </script>
 </body>
 </html>
