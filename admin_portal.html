@@ -108,7 +108,7 @@
                 <!-- Search and Filter -->
                 <div class="mb-4 flex flex-col sm:flex-row gap-4">
                     <input type="text" id="search-input" placeholder="Search by name or description..." class="flex-grow rounded-lg border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue border p-2">
-                    <select id="filter-status" class="w-full sm:w-40 rounded-lg border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue border p-2 bg-white">
+                    <select type="text" id="filter-status" class="w-full sm:w-40 rounded-lg border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue border p-2 bg-white">
                         <option value="all">Status: All</option>
                         <option value="approved">Approved</option>
                         <option value="pending">Pending</option>
@@ -138,7 +138,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // REMOVED 'setLogLevel' from this import to fix the SyntaxError
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- Fallback Firebase Configuration (Provided by User) ---
@@ -474,8 +475,7 @@
         // --- Core Firebase Initialization Logic (Self-Executing Function) ---
         (async () => {
             try {
-                // Set Firebase logging level to help with debugging
-                setLogLevel('debug');
+                // setLogLevel('debug'); // Removed as it caused a module error. Debugging relies on console.log now.
                 
                 // 1. Initialize Firebase (firebaseConfig is now guaranteed to exist)
                 app = initializeApp(firebaseConfig);
