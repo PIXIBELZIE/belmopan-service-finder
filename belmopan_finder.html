@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Belmopan Service & Food Finder</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+        }
+        .card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        .scroll-area {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .logo-placeholder {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #34d399; /* green-400 */
+        }
+        .input-group label {
+            font-weight: 600;
+            color: #4b5563; /* gray-700 */
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-green-700 mb-2">Belmopan Service Finder 🇧🇿</h1>
+            <p class="text-lg text-gray-600">Find the best food, delivery, and local services in Cayo.</p>
+        </header>
+        
+        <!-- Vendor Login Button (Discreet) -->
+        <div class="flex justify-end mb-4">
+            <button id="vendor-login-toggle" onclick="toggleVendorLogin()" class="text-sm text-gray-500 hover:text-green-600 transition duration-150">
+                Vendor Login
+            </button>
+        </div>
+
+        <!-- Vendor Login Panel (Initially Hidden) -->
+        <div id="vendor-login-panel" class="hidden bg-white p-4 rounded-xl shadow-lg mb-6 border-l-4 border-yellow-500">
+            <h3 class="text-lg font-semibold mb-2">Vendor Dashboard Access</h3>
+            <p class="text-sm text-gray-600 mb-4">Enter your private Vendor Key to manage your services. <span class="font-bold text-red-500">Note: Use 'vendor123' to log in for demo purposes.</span></p>
+            <div class="flex space-x-2">
+                <input type="password" id="vendor-key-input" placeholder="Enter Vendor Key" class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-yellow-500">
+                <button onclick="handleVendorLogin()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150">
+                    Log In
+                </button>
+            </div>
+            <p id="auth-status" class="text-xs text-red-500 mt-2 hidden"></p>
+        </div>
+
+        <div id="loading" class="text-center text-green-600 mt-16 text-lg font-semibold hidden">
+            <div class="animate-spin inline-block w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full mr-2"></div>
+            Loading Services...
+        </div>
+
+        <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+            <strong class="font-bold">Error:</strong>
+            <span id="error-text" class="block sm:inline">Could not connect to the database.</span>
+        </div>
+
+        <!-- Main Search View -->
+        <div id="search-view" class="bg-white p-6 rounded-xl shadow-lg">
+            <div class="flex flex-col md:flex-row gap-4 mb-6">
+                <input type="text" id="search-input" placeholder="Search for food (e.g., Tacos) or service (e.g., Taxi)" class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-lg">
+                <button onclick="handleSearch()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-150">
+                    Search
+                </button>
+            </div>
+
+            <div id="service-list" class="grid grid-cols-1 md:grid-cols-2 gap-6 scroll-area">
+                <!-- Service cards will be rendered here -->
+            </div>
+            <p id="no-results" class="hidden text-center text-gray-500 mt-8 text-lg">No services matched your search. Try "Restaurant" or "Burrito".</p>
+        </div>
+
+        <!-- Detail View (Initially Hidden) -->
+        <div id="detail-view" class="hidden bg-white p-6 rounded-xl shadow-lg mt-8">
+            <button onclick="showSearch()" class="text-green-600 hover:text-green-800 font-semibold mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                Back to Search Results
+            </button>
+
+            <div class="flex items-center space-x-4 mb-4">
+                <img id="detail-logo" class="logo-placeholder" alt="Logo">
+                <div>
+                    <h2 id="detail-name" class="text-3xl font-bold text-gray-800"></h2>
+                    <p id="detail-type" class="text-xl text-green-600 font-medium"></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Left Column: Profile & Contact -->
+                <div>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h3 class="text-2xl font-semibold text-gray-700 mb-3 border-b pb-2">Profile</h3>
+                        <p id="detail-description" class="text-gray-700 mb-4"></p>
+                        <p class="text-sm text-gray-500">Location: <span id="detail-location-text" class="font-medium text-gray-700"></span></p>
+                        <button id="view-map-button" class="mt-3 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150">
+                            View on Map
+                        </button>
+                    </div>
+
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="text-2xl font-semibold text-gray-700 mb-3 border-b pb-2">Contact & Info</h3>
+                        <p class="text-gray-700 flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.772-1.549a1 1 0 011.06-.54l4.435.74A1 1 0 0118 17v2a1 1 0 01-1 1h-2C7.82 20 2 14.18 2 7V5z" />
+                            </svg>
+                            Phone: <span id="detail-contact" class="font-medium ml-1"></span>
+                        </p>
+                        <p class="text-sm text-gray-500 mt-4">Owner ID: <span id="detail-owner-id" class="font-mono break-all text-xs"></span></p>
+                    </div>
+                </div>
+
+                <!-- Right Column: Menu/Service Details -->
+                <div id="menu-section" class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="text-2xl font-semibold text-gray-700 mb-3 border-b pb-2" id="menu-title">Menu</h3>
+                    <div id="detail-menu" class="space-y-4">
+                        <!-- Menu items or service description will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- --- Vendor Dashboard (Hidden until key is entered) --- -->
+        <div id="vendor-dashboard" class="hidden mt-10 p-6 bg-yellow-100 rounded-xl shadow-lg border-2 border-yellow-400">
+            <div class="flex justify-between items-center mb-4 border-b pb-2 border-yellow-300">
+                <h3 class="text-2xl font-bold text-yellow-800 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M5 9V7a2 2 0 012-2h6a2 2 0 012 2v2H5zm3-2a1 1 0 000 2h4a1 1 0 100-2H8z" /><path fill-rule="evenodd" d="M3 10a1 1 0 000 2h14a1 1 0 100-2H3z" clip-rule="evenodd" /><path fill-rule="evenodd" d="M3 12a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2v-2a2 2 0 00-2-2H3zm2 4h4v-2H5v2zm6 0h4v-2h-4v2z" clip-rule="evenodd" /></svg>
+                    Vendor Management Panel
+                </h3>
+                <p class="text-sm text-gray-700">Logged in as: <span id="vendor-uid" class="font-mono text-xs">${currentUserId || 'Anon'}</span></p>
+            </div>
+            
+            <p class="text-md font-semibold text-yellow-700 mb-3">Your Listed Services:</p>
+            <div id="vendor-service-list" class="space-y-4 mb-8">
+                <p class="text-gray-500 italic">No services linked to your ID yet. Add one below!</p>
+            </div>
+
+            <h4 class="text-xl font-semibold text-yellow-800 mb-3 border-t border-yellow-300 pt-4">Add New Service</h4>
+            <form id="add-service-form" class="space-y-4">
+                <div class="input-group">
+                    <label for="input-name" class="block mb-1">Service Name:</label>
+                    <input type="text" id="input-name" required class="w-full p-2 border border-gray-300 rounded-lg">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="input-group">
+                        <label for="input-type" class="block mb-1">Type:</label>
+                        <select id="input-type" required class="w-full p-2 border border-gray-300 rounded-lg">
+                            <option value="Restaurant">Restaurant</option>
+                            <option value="Delivery">Delivery / Taxi</option>
+                            <option value="Caterer">Caterer</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="input-contact" class="block mb-1">Contact Phone:</label>
+                        <input type="text" id="input-contact" required class="w-full p-2 border border-gray-300 rounded-lg" placeholder="+501-...">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="input-desc" class="block mb-1">Description:</label>
+                    <textarea id="input-desc" required class="w-full p-2 border border-gray-300 rounded-lg h-16"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="input-group">
+                        <label for="input-location" class="block mb-1">Location (Specific for Map):</label>
+                        <input type="text" id="input-location" required class="w-full p-2 border border-gray-300 rounded-lg" placeholder="e.g., Market Square, Belmopan">
+                    </div>
+                    <div class="input-group">
+                        <label for="input-logo" class="block mb-1">Logo URL (Optional, 48x48 ideal):</label>
+                        <input type="url" id="input-logo" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="https://placehold.co/100x100?text=MyLogo">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="input-menu" class="block mb-1">Menu (JSON Format - Restaurant only):</label>
+                    <textarea id="input-menu" class="w-full p-2 border border-gray-300 rounded-lg h-24 font-mono text-xs" placeholder='[{"food": "Stew Chicken", "price": 10.00, "description": "Classic Belizean dish"}, {"food": "Item 2", "price": 5.00, "description": "Another Item"}]'>${JSON.stringify([
+                        { food: "Item 1", price: 10.00, description: "Description for item 1" }
+                    ])}</textarea>
+                    <p class="text-xs text-gray-500 mt-1">Leave as <code>[]</code> or empty if not a restaurant. Must be valid JSON.</p>
+                </div>
+
+                <button type="submit" id="add-service-button" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-150">
+                    Submit New Service
+                </button>
+                <p id="submission-status" class="text-sm text-center mt-2 hidden"></p>
+            </form>
+        </div>
+
+
+        <!-- Demo Data Seeder (For Initial Setup) -->
+        <div class="mt-6 p-6 bg-gray-100 rounded-xl shadow-inner">
+            <h3 class="text-xl font-semibold text-gray-700 mb-4">Demo Data Seeder (One-Time Setup)</h3>
+            <p class="text-sm text-gray-600 mb-4">Click below to add initial services to the database if it is currently empty. These will be owned by you (your current ID).</p>
+            <button onclick="seedDatabase()" id="seed-button" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 disabled:opacity-50" disabled>
+                Seed Belmopan Mock Data
+            </button>
+            <p id="seed-status" class="text-sm text-blue-700 mt-2 hidden"></p>
+        </div>
+
+    </div>
+
+    <!-- Firebase Imports and Logic -->
+    <script type="module">
+        // --- MANDATORY GLOBAL VARIABLES ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // --- FIREBASE IMPORTS ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, addDoc, setLogLevel, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- GLOBAL STATE ---
+        let db, auth;
+        let services = [];
+        let currentUserId = null;
+        let isAuthReady = false;
+        let isVendor = false;
+        
+        // --- HARDCODED VENDOR KEY (For demo/admin access) ---
+        const VENDOR_SECRET_KEY = 'vendor123'; 
+        
+        const SERVICE_COLLECTION_PATH = `/artifacts/${appId}/public/data/belmopan_services`;
+
+        // --- UTILS ---
+
+        /** Shows an error message in the UI */
+        function displayError(message) {
+            document.getElementById('error-message').classList.remove('hidden');
+            document.getElementById('error-text').textContent = message;
+            console.error(message);
+        }
+
+        /** Formats currency */
+        function formatPrice(price) {
+            // Ensure price is treated as a number
+            return parseFloat(price).toFixed(2);
+        }
+        
+        /** Toggles visibility of the vendor login panel */
+        window.toggleVendorLogin = function() {
+            const panel = document.getElementById('vendor-login-panel');
+            panel.classList.toggle('hidden');
+            document.getElementById('auth-status').classList.add('hidden');
+        }
+        
+        /** Handles the vendor login attempt */
+        window.handleVendorLogin = function() {
+            const key = document.getElementById('vendor-key-input').value.trim();
+            const statusEl = document.getElementById('auth-status');
+            
+            statusEl.classList.remove('hidden');
+
+            if (key === VENDOR_SECRET_KEY) {
+                isVendor = true;
+                statusEl.textContent = 'Login successful! Accessing dashboard...';
+                statusEl.classList.remove('text-red-500');
+                statusEl.classList.add('text-green-600');
+                document.getElementById('vendor-login-panel').classList.add('hidden');
+                document.getElementById('vendor-dashboard').classList.remove('hidden');
+                document.getElementById('vendor-uid').textContent = currentUserId;
+                // Re-render dashboard with owned services
+                renderVendorDashboard(); 
+            } else {
+                statusEl.textContent = 'Invalid Vendor Key.';
+                statusEl.classList.remove('text-green-600');
+                statusEl.classList.add('text-red-500');
+                isVendor = false;
+                document.getElementById('vendor-dashboard').classList.add('hidden');
+            }
+        }
+        
+        /** Renders the list of services owned by the current user for editing */
+        function renderVendorDashboard() {
+            if (!isVendor) return;
+            
+            const dashboardList = document.getElementById('vendor-service-list');
+            dashboardList.innerHTML = '';
+
+            const ownedServices = services.filter(s => s.ownerId === currentUserId);
+            
+            if (ownedServices.length === 0) {
+                dashboardList.innerHTML = '<p class="text-gray-500 italic">No services linked to your ID yet. Add one below!</p>';
+                return;
+            }
+
+            ownedServices.forEach(service => {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center p-3 bg-yellow-50 rounded-lg border border-yellow-300';
+                item.innerHTML = `
+                    <div>
+                        <p class="font-bold text-gray-800">${service.name}</p>
+                        <p class="text-sm text-yellow-700">${service.type}</p>
+                    </div>
+                    <button onclick="populateEditForm('${service.id}')" class="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold py-1 px-3 rounded-md">
+                        Edit Details
+                    </button>
+                `;
+                dashboardList.appendChild(item);
+            });
+        }
+        
+        /** Populates the form to allow editing of an existing service */
+        window.populateEditForm = function(serviceId) {
+            const service = services.find(s => s.id === serviceId);
+            if (!service) return;
+
+            // Set form values
+            document.getElementById('input-name').value = service.name;
+            document.getElementById('input-type').value = service.type;
+            document.getElementById('input-desc').value = service.description;
+            document.getElementById('input-contact').value = service.contact;
+            document.getElementById('input-location').value = service.location;
+            document.getElementById('input-logo').value = service.logoUrl || '';
+            document.getElementById('input-menu').value = service.menu || '[]';
+            
+            // Change button text and set data attribute for update mode
+            const button = document.getElementById('add-service-button');
+            button.textContent = 'Update Existing Service';
+            button.dataset.serviceId = service.id;
+        }
+
+        /** Generates a simple card for a service */
+        function createServiceCard(service) {
+            const card = document.createElement('div');
+            card.className = 'card bg-white border border-gray-200 p-5 rounded-xl shadow-sm cursor-pointer hover:border-green-400';
+            card.onclick = () => showDetails(service);
+
+            // Icon/Logo logic
+            let logoHtml;
+            if (service.logoUrl) {
+                logoHtml = `<img src="${service.logoUrl}" onerror="this.onerror=null;this.src='https://placehold.co/100x100/eeeeee/34d399?text=NO+LOGO';" alt="${service.name} Logo" class="logo-placeholder">`;
+            } else {
+                // Fallback icon based on type
+                let iconSvg;
+                switch(service.type) {
+                    case 'Restaurant': iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-500" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a5 5 0 00-5 5v2h10V7a5 5 0 00-5-5zM9 9H5v8a2 2 0 002 2h6a2 2 0 002-2V9h-4V7a1 1 0 011-1h2V4a3 3 0 00-3-3H9a3 3 0 00-3 3v2h2z" /><path fill-rule="evenodd" d="M17 18a2 2 0 01-2 2H5a2 2 0 01-2-2V7h14v11z" clip-rule="evenodd" /></svg>`; break;
+                    case 'Caterer': iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zm7 0a1 1 0 10-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zm5 0a1 1 0 10-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4z" /></svg>`; break;
+                    case 'Delivery':
+                    case 'Taxi': iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fill-rule="evenodd" d="M4 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 3a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>`; break;
+                    default: iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1z" /></svg>`;
+                }
+                logoHtml = `<div class="p-3 bg-green-100 rounded-full">${iconSvg}</div>`;
+            }
+
+            let typeColor = (service.type === 'Restaurant') ? 'text-orange-600' : (service.type === 'Caterer' ? 'text-indigo-600' : 'text-blue-600');
+
+            // Find a featured food item/price if available for Restaurant types
+            let featuredFood = '';
+            if (service.type === 'Restaurant') {
+                try {
+                    const menu = JSON.parse(service.menu);
+                    if (menu && menu.length > 0) {
+                        const firstItem = menu[0];
+                        featuredFood = `<p class="text-sm text-gray-600 mt-2">Try: <span class="font-semibold">${firstItem.food}</span> (BZ$ ${formatPrice(firstItem.price)})</p>`;
+                    }
+                } catch (e) {
+                    console.error("Error parsing menu for card:", e);
+                }
+            }
+
+
+            card.innerHTML = `
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">${service.name}</h3>
+                        <p class="text-md font-semibold ${typeColor} mb-2">${service.type}</p>
+                    </div>
+                    ${logoHtml}
+                </div>
+                <p class="text-sm text-gray-700 mt-1">${service.description}</p>
+                ${featuredFood}
+                <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-sm text-gray-500">Location: ${service.location}</span>
+                    <span class="text-sm text-green-700 font-semibold">View Details &rarr;</span>
+                </div>
+            `;
+            return card;
+        }
+
+        /** Renders the list of services */
+        function renderServices(serviceList) {
+            const listContainer = document.getElementById('service-list');
+            const noResults = document.getElementById('no-results');
+            listContainer.innerHTML = '';
+
+            if (serviceList.length === 0) {
+                noResults.classList.remove('hidden');
+                return;
+            }
+
+            noResults.classList.add('hidden');
+            serviceList.forEach(service => {
+                listContainer.appendChild(createServiceCard(service));
+            });
+        }
+
+        /** Handles the search logic */
+        window.handleSearch = function() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            showSearch(); // Ensure we are on the search view
+
+            if (!query) {
+                renderServices(services);
+                return;
+            }
+
+            const filtered = services.filter(service => {
+                // 1. Search by Service Name or Type
+                if (service.name.toLowerCase().includes(query) || service.type.toLowerCase().includes(query)) {
+                    return true;
+                }
+                // 2. Search by Menu items (for Restaurants)
+                if (service.type === 'Restaurant') {
+                    try {
+                        const menu = JSON.parse(service.menu);
+                        return menu.some(item =>
+                            item.food.toLowerCase().includes(query) ||
+                            item.description.toLowerCase().includes(query)
+                        );
+                    } catch (e) {
+                        console.error(`Skipping menu search for ${service.name}: Invalid JSON.`);
+                        return false;
+                    }
+                }
+                return false;
+            });
+
+            renderServices(filtered);
+        }
+
+        /** Switches to the detail view and populates data */
+        window.showDetails = function(service) {
+            document.getElementById('search-view').classList.add('hidden');
+            document.getElementById('detail-view').classList.remove('hidden');
+
+            document.getElementById('detail-name').textContent = service.name;
+            document.getElementById('detail-type').textContent = service.type;
+            document.getElementById('detail-description').textContent = service.description;
+            document.getElementById('detail-location-text').textContent = service.location;
+            document.getElementById('detail-contact').textContent = service.contact;
+            document.getElementById('detail-owner-id').textContent = service.ownerId;
+            
+            // Logo
+            const logoEl = document.getElementById('detail-logo');
+            logoEl.src = service.logoUrl || 'https://placehold.co/100x100/eeeeee/34d399?text=NO+LOGO';
+            logoEl.alt = `${service.name} logo`;
+            
+            // Map Link
+            const mapButton = document.getElementById('view-map-button');
+            const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(service.location + ', Belmopan, Belize')}`;
+            mapButton.onclick = () => window.open(mapLink, '_blank');
+
+
+            const menuContainer = document.getElementById('detail-menu');
+            menuContainer.innerHTML = '';
+            const menuTitle = document.getElementById('menu-title');
+
+            if (service.type === 'Restaurant' && service.menu) {
+                menuTitle.textContent = "Full Menu & Pricing";
+                try {
+                    const menu = JSON.parse(service.menu);
+                    if (menu.length === 0) {
+                        menuContainer.innerHTML = '<p class="text-gray-500 italic">No menu items listed yet.</p>';
+                    } else {
+                        menu.forEach(item => {
+                            const itemDiv = document.createElement('div');
+                            itemDiv.className = 'p-3 border-b border-gray-200 last:border-b-0';
+                            itemDiv.innerHTML = `
+                                <div class="flex justify-between items-start">
+                                    <span class="font-semibold text-gray-800">${item.food}</span>
+                                    <span class="font-bold text-green-700 ml-4">BZ$ ${formatPrice(item.price)}</span>
+                                </div>
+                                <p class="text-sm text-gray-500 mt-1">${item.description}</p>
+                            `;
+                            menuContainer.appendChild(itemDiv);
+                        });
+                    }
+                } catch (e) {
+                    menuContainer.innerHTML = '<p class="text-red-500">Error loading menu data: Invalid JSON structure.</p>';
+                    console.error("Error parsing menu JSON:", e);
+                }
+            } else {
+                menuTitle.textContent = "Service Details";
+                menuContainer.innerHTML = `<p class="text-gray-600">This is a ${service.type} service. Contact them directly via phone for bookings or requests.</p>`;
+            }
+        }
+
+        /** Switches back to the search view */
+        window.showSearch = function() {
+            document.getElementById('search-view').classList.remove('hidden');
+            document.getElementById('detail-view').classList.add('hidden');
+        }
+        
+        // --- ADD/UPDATE SERVICE FUNCTIONALITY ---
+        document.getElementById('add-service-form').addEventListener('submit', handleServiceSubmission);
+
+        async function handleServiceSubmission(event) {
+            event.preventDefault();
+            
+            if (!db || !currentUserId || !isAuthReady || !isVendor) {
+                // If not authenticated or not a vendor, prevent submission
+                document.getElementById('submission-status').textContent = 'Error: Must be logged in as a Vendor to submit.';
+                document.getElementById('submission-status').classList.remove('hidden', 'text-blue-700');
+                document.getElementById('submission-status').classList.add('text-red-700');
+                return;
+            }
+
+            const button = document.getElementById('add-service-button');
+            const statusEl = document.getElementById('submission-status');
+            const isUpdate = button.dataset.serviceId;
+            
+            statusEl.classList.remove('hidden', 'text-red-700');
+            statusEl.classList.add('text-blue-700');
+            statusEl.textContent = isUpdate ? 'Updating service...' : 'Submitting new service...';
+
+            const name = document.getElementById('input-name').value.trim();
+            const type = document.getElementById('input-type').value;
+            const description = document.getElementById('input-desc').value.trim();
+            const contact = document.getElementById('input-contact').value.trim();
+            const location = document.getElementById('input-location').value.trim();
+            const logoUrl = document.getElementById('input-logo').value.trim();
+            const menuJson = document.getElementById('input-menu').value.trim() || '[]';
+
+            let parsedMenu;
+            try {
+                parsedMenu = JSON.parse(menuJson);
+            } catch (e) {
+                statusEl.textContent = 'Error: Menu field must contain valid JSON format.';
+                statusEl.classList.remove('text-blue-700');
+                statusEl.classList.add('text-red-700');
+                return;
+            }
+            
+            const serviceData = {
+                name,
+                type,
+                description,
+                contact,
+                location,
+                logoUrl: logoUrl || '',
+                menu: JSON.stringify(parsedMenu),
+                ownerId: currentUserId,
+            };
+
+            try {
+                const servicesCollectionRef = collection(db, SERVICE_COLLECTION_PATH);
+                
+                if (isUpdate) {
+                    // UPDATE existing document
+                    const docRef = doc(servicesCollectionRef, isUpdate);
+                    await setDoc(docRef, serviceData, { merge: true });
+                    statusEl.textContent = `Success! Service "${name}" updated.`;
+                } else {
+                    // ADD new document
+                    await addDoc(servicesCollectionRef, serviceData);
+                    statusEl.textContent = `Success! Service "${name}" added.`;
+                }
+                
+                // Reset form state
+                document.getElementById('add-service-form').reset();
+                button.textContent = 'Submit New Service';
+                delete button.dataset.serviceId;
+                document.getElementById('input-menu').value = JSON.stringify([
+                    { food: "Item 1", price: 10.00, description: "Description for item 1" }
+                ]);
+
+            } catch (error) {
+                statusEl.textContent = `Submission Failed: ${error.message}`;
+                statusEl.classList.remove('text-blue-700');
+                statusEl.classList.add('text-red-700');
+                console.error("Error adding/updating document: ", error);
+            }
+        }
+
+        // --- FIREBASE INITIALIZATION AND DATA HANDLING ---
+
+        /** Initializes Firebase and sets up auth listener */
+        async function initializeFirebase() {
+            setLogLevel('debug'); // Enable Firestore logging
+            document.getElementById('loading').classList.remove('hidden');
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Use custom token if provided, otherwise sign in anonymously
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    isAuthReady = true;
+                    currentUserId = user ? user.uid : 'Anon';
+                    document.getElementById('seed-button').disabled = false;
+                    setupDataListener();
+                });
+
+            } catch (error) {
+                displayError(`Firebase Initialization Failed: ${error.message}`);
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        /** Sets up the real-time data listener for services */
+        function setupDataListener() {
+            if (!db || !isAuthReady) {
+                console.warn('DB not ready or user not authenticated. Skipping listener setup.');
+                return;
+            }
+
+            const servicesCollectionRef = collection(db, SERVICE_COLLECTION_PATH);
+            const q = query(servicesCollectionRef);
+
+            onSnapshot(q, (snapshot) => {
+                document.getElementById('loading').classList.add('hidden');
+                
+                // Map all services
+                services = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                // Check for seed visibility
+                if (services.length === 0) {
+                    document.getElementById('seed-status').textContent = 'Database is empty. Please click "Seed Belmopan Mock Data".';
+                    document.getElementById('seed-status').classList.remove('hidden');
+                } else {
+                    document.getElementById('seed-status').classList.add('hidden');
+                }
+
+                // Update UI
+                handleSearch(); 
+                if (isVendor) {
+                    document.getElementById('vendor-uid').textContent = currentUserId;
+                    renderVendorDashboard(); // Re-render dashboard if vendor is logged in
+                }
+            }, (error) => {
+                displayError(`Firestore Data Error: ${error.message}`);
+                document.getElementById('loading').classList.add('hidden');
+            });
+        }
+
+        // --- MOCK DATA SEEDING (FOR INITIAL POPULATION) ---
+
+        const mockData = [
+            {
+                name: "Calypso Grill",
+                type: "Restaurant",
+                contact: "+501-822-FOOD",
+                description: "The best local and international cuisine in Belmopan. Famous for our all-day Tacos and fresh juice.",
+                location: "Market Square, Belmopan, Belize",
+                logoUrl: "https://placehold.co/100x100/10b981/ffffff?text=C+GRILL",
+                ownerId: "mock-owner-1",
+                menu: JSON.stringify([
+                    { food: "Chicken Tacos (3)", price: 2.50, description: "Soft shell, chicken, and cabbage slaw." },
+                    { food: "Beef Burrito", price: 8.00, description: "Large flour tortilla, refried beans, cheese, and rice." },
+                ])
+            },
+            {
+                name: "Belizean Bites Catering",
+                type: "Caterer",
+                contact: "+501-670-CATER",
+                description: "Full-service catering for weddings, corporate events, and parties. Specializing in traditional Belizean fare.",
+                location: "Belize City Road, Belmopan",
+                logoUrl: "https://placehold.co/100x100/4f46e5/ffffff?text=BB+CATER",
+                ownerId: "mock-owner-2",
+                menu: JSON.stringify([])
+            },
+            {
+                name: "Belmopan Express Delivery",
+                type: "Delivery",
+                contact: "+501-630-RIDE",
+                description: "Fast and reliable delivery service for food and parcels, also offering local taxi rides within Belmopan.",
+                location: "Online/Mobile Service, Serving Belmopan",
+                logoUrl: "https://placehold.co/100x100/3b82f6/ffffff?text=B+EXPRESS",
+                ownerId: "mock-owner-3",
+                menu: JSON.stringify([])
+            },
+        ];
+
+        window.seedDatabase = async function() {
+            if (!db || !currentUserId || !isAuthReady) {
+                console.error("Cannot seed: Firebase not fully initialized.");
+                return;
+            }
+
+            document.getElementById('seed-button').disabled = true;
+            document.getElementById('seed-status').textContent = 'Seeding data... This may take a moment.';
+            document.getElementById('seed-status').classList.remove('hidden');
+
+            const servicesCollectionRef = collection(db, SERVICE_COLLECTION_PATH);
+            let count = 0;
+
+            try {
+                // Check if collection is empty
+                const existingDocs = await getDocs(query(servicesCollectionRef));
+                if (existingDocs.size > 0) {
+                    document.getElementById('seed-status').textContent = 'Database already contains data. Skipping seed.';
+                    document.getElementById('seed-button').disabled = false;
+                    return;
+                }
+
+                for (const data of mockData) {
+                    await addDoc(servicesCollectionRef, {
+                        ...data,
+                        ownerId: currentUserId // Assign the current user as the owner
+                    });
+                    count++;
+                }
+                document.getElementById('seed-status').textContent = `${count} mock services added successfully and linked to your ID!`;
+            } catch (e) {
+                displayError(`Failed to seed data: ${e.message}`);
+                document.getElementById('seed-button').disabled = false;
+            }
+        };
+
+        // Initialize on load
+        initializeFirebase();
+    </script>
+</body>
+</html>
