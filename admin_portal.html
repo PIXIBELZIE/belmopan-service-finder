@@ -3,453 +3,504 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendor Sign-up & Approval System</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Belmopan Service Finder - Admin Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#1e40af',
+                        'secondary-yellow': '#facc15',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Custom styles for aesthetic enhancements */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fb;
-        }
-        .card {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .admin-tag {
-            background-color: #f0fdf4;
-            color: #15803d;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-        }
-        .vendor-item {
-            border-bottom: 1px solid #e5e7eb;
-            transition: background-color 0.2s;
-        }
-        .vendor-item:last-child {
-            border-bottom: none;
-        }
+        /* Custom scrollbar for better visibility */
+        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="min-h-screen p-4 sm:p-8 flex flex-col items-center">
-
-    <div id="loading-indicator" class="text-gray-500 mt-20">Loading application...</div>
+<body class="bg-gray-50 font-sans min-h-screen p-4 sm:p-8">
     
-    <div id="main-app" class="w-full max-w-4xl hidden">
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl font-extrabold text-gray-900">Vendor Management Portal</h1>
-            <p class="text-gray-500 mt-2" id="auth-status"></p>
-        </header>
-
-        <!-- Dynamic Content Area -->
-        <div id="content-area" class="card p-6 sm:p-8">
-            <!-- Content will be injected here (Admin Dashboard or Vendor Form) -->
+    <div id="loading-screen" class="fixed inset-0 bg-white/90 z-50 flex items-center justify-center transition-opacity duration-300">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-blue mx-auto"></div>
+            <p class="mt-4 text-xl font-semibold text-primary-blue">Loading Secure Admin Portal...</p>
         </div>
-        
-        <!-- Error Message Box -->
-        <div id="message-box" class="mt-4 p-4 text-sm rounded-lg text-red-700 bg-red-100 hidden" role="alert"></div>
     </div>
 
-    <!-- Firebase SDKs -->
+    <div id="app-container" class="max-w-7xl mx-auto opacity-0 transition-opacity duration-300">
+        <header class="mb-8 border-b pb-4">
+            <h1 class="text-3xl font-extrabold text-gray-800 flex items-center">
+                <svg class="w-8 h-8 mr-2 text-primary-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Belmopan Service Admin
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Authenticated User ID: <span id="user-id" class="font-mono text-xs bg-gray-200 px-2 py-0.5 rounded">...</span>
+                <span class="ml-4 text-red-600 font-bold hidden" id="error-message"></span>
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Vendor Submission Form -->
+            <section class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-fit">
+                <h2 class="text-2xl font-bold mb-4 text-primary-blue">Add New Service/Vendor</h2>
+                <form id="vendor-form" class="space-y-4">
+                    <input type="hidden" id="vendor-id">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700">Vendor/Service Name</label>
+                        <input type="text" id="name" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue border p-2">
+                    </div>
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                        <select id="category" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue border p-2 bg-white">
+                            <option value="">Select Category</option>
+                            <option value="Food">Food & Beverage</option>
+                            <option value="Government">Government & Public</option>
+                            <option value="Health">Health & Wellness</option>
+                            <option value="Education">Education</option>
+                            <option value="Retail">Retail & Shopping</option>
+                            <option value="Services">Professional Services</option>
+                            <option value="Automotive">Automotive</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="contact" class="block text-sm font-medium text-gray-700">Contact (Phone/Email)</label>
+                        <input type="text" id="contact" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue border p-2">
+                    </div>
+                    <div>
+                        <label for="location" class="block text-sm font-medium text-gray-700">Location/Address</label>
+                        <input type="text" id="location" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue border p-2">
+                    </div>
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea id="description" rows="3" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue border p-2"></textarea>
+                    </div>
+                    <div>
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" id="approved" class="rounded text-primary-blue shadow-sm focus:ring-primary-blue">
+                            <span class="ml-2 text-sm font-medium text-gray-700">Approved (Show on Public Site)</span>
+                        </label>
+                    </div>
+                    <button type="submit" id="submit-button" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-blue hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition duration-150 ease-in-out">
+                        Add Vendor
+                    </button>
+                    <button type="button" id="clear-button" class="w-full py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition duration-150 ease-in-out">
+                        Clear Form
+                    </button>
+                </form>
+            </section>
+
+            <!-- Vendor List and Management -->
+            <section class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 text-primary-blue">Manage Existing Services</h2>
+                
+                <!-- Search and Filter -->
+                <div class="mb-4 flex flex-col sm:flex-row gap-4">
+                    <input type="text" id="search-input" placeholder="Search by name or description..." class="flex-grow rounded-lg border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue border p-2">
+                    <select id="filter-status" class="w-full sm:w-40 rounded-lg border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue border p-2 bg-white">
+                        <option value="all">Status: All</option>
+                        <option value="approved">Approved</option>
+                        <option value="pending">Pending</option>
+                    </select>
+                </div>
+
+                <!-- Vendor List -->
+                <div id="vendor-list" class="space-y-4 h-[70vh] overflow-y-auto custom-scroll">
+                    <p id="list-message" class="text-gray-500 text-center py-8">No services loaded yet or list is empty.</p>
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <!-- Custom Modal for Confirmation/Alerts -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full">
+            <h3 id="modal-title" class="text-xl font-bold mb-3 text-red-600">Confirm Deletion</h3>
+            <p id="modal-body" class="mb-4 text-gray-700">Are you sure you want to delete this vendor?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-cancel" class="py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">Cancel</button>
+                <button id="modal-confirm" class="py-2 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700">Delete</button>
+            </div>
+        </div>
+    </div>
+
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, deleteDoc, addDoc, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, orderBy, getDocs, runTransaction, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // --- GLOBAL VARIABLES & FIREBASE SETUP (MANDATORY) ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-vendor-app';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        // --- Global Variables (Canvas Environment) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app;
+        let db;
+        let auth;
+        let userId;
+
+        // --- DOM Elements ---
+        const loadingScreen = document.getElementById('loading-screen');
+        const appContainer = document.getElementById('app-container');
+        const userIdDisplay = document.getElementById('user-id');
+        const errorMessage = document.getElementById('error-message');
+        const vendorForm = document.getElementById('vendor-form');
+        const vendorListElement = document.getElementById('vendor-list');
+        const listMessage = document.getElementById('list-message');
+        const submitButton = document.getElementById('submit-button');
+        const clearButton = document.getElementById('clear-button');
+        const searchInput = document.getElementById('search-input');
+        const filterStatus = document.getElementById('filter-status');
         
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-
-        let userId = null;
-        let userRole = null;
-        let unsubscribePending = null;
-        let unsubscribeApproved = null;
-        let isAuthReady = false;
-
-        // Firestore Paths Helpers
-        const getProfileDocRef = (uid) => doc(db, `/artifacts/${appId}/users/${uid}/profile/role`);
-        const getPendingCollectionRef = () => collection(db, `/artifacts/${appId}/public/data/pending_vendors`);
-        const getApprovedCollectionRef = () => collection(db, `/artifacts/${appId}/public/data/approved_vendors`);
+        // Modal elements
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalConfirm = document.getElementById('modal-confirm');
+        const modalCancel = document.getElementById('modal-cancel');
         
-        // UI Elements
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const mainApp = document.getElementById('main-app');
-        const contentArea = document.getElementById('content-area');
-        const authStatusElement = document.getElementById('auth-status');
-        const messageBox = document.getElementById('message-box');
+        // State
+        let allVendors = [];
+        let currentFilter = { search: '', status: 'all' };
+        let vendorToEdit = null;
+        let pendingAction = null; // Used for modal confirmation
 
-        // Utility Functions
-        const showMessage = (msg, isError = true) => {
-            messageBox.textContent = msg;
-            messageBox.className = isError 
-                ? 'mt-4 p-4 text-sm rounded-lg text-red-700 bg-red-100' 
-                : 'mt-4 p-4 text-sm rounded-lg text-green-700 bg-green-100';
-            messageBox.classList.remove('hidden');
-            setTimeout(() => messageBox.classList.add('hidden'), 5000);
+        // --- Utility Functions ---
+
+        // Simple confirmation modal function (to replace window.confirm/alert)
+        const showModal = (title, body, confirmText = 'Confirm') => {
+            return new Promise(resolve => {
+                modalTitle.textContent = title;
+                modalBody.textContent = body;
+                modalConfirm.textContent = confirmText;
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                const handleConfirm = () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modalConfirm.removeEventListener('click', handleConfirm);
+                    modalCancel.removeEventListener('click', handleCancel);
+                    resolve(true);
+                };
+
+                const handleCancel = () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modalConfirm.removeEventListener('click', handleConfirm);
+                    modalCancel.removeEventListener('click', handleCancel);
+                    resolve(false);
+                };
+
+                modalConfirm.addEventListener('click', handleConfirm);
+                modalCancel.addEventListener('click', handleCancel);
+            });
         };
 
-        const generateCSV = (data) => {
-            if (!data || data.length === 0) return '';
-            // Ensure headers are consistent, even if some fields are missing in some docs
-            const headers = ["id", "userId", "name", "email", "description", "submittedAt", "approvedBy", "approvedAt"];
-            
-            const rows = data.map(obj => 
-                headers.map(key => {
-                    let val = obj[key] || '';
-                    if (key === 'description' && typeof val === 'string') {
-                        // Sanitize string content for CSV (escape quotes)
-                        val = val.replace(/"/g, '""');
-                    }
-                    return `"${String(val)}"`;
-                }).join(',')
-            );
-            return [headers.join(','), ...rows].join('\n');
+
+        // --- Firestore Management ---
+
+        const getVendorCollectionRef = () => {
+            // Public data path: /artifacts/{appId}/public/data/vendors
+            return collection(db, 'artifacts', appId, 'public', 'data', 'vendors');
         };
 
-        const downloadData = (data, filename, type) => {
-            const blob = new Blob([data], { type: `${type};charset=utf-8;` });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        };
+        const saveVendor = async (vendorData) => {
+            try {
+                const docRef = vendorData.id
+                    ? doc(getVendorCollectionRef(), vendorData.id)
+                    : null;
 
-        // --- AUTHENTICATION & ROLE MANAGEMENT ---
+                const dataToSave = {
+                    name: vendorData.name,
+                    category: vendorData.category,
+                    contact: vendorData.contact,
+                    location: vendorData.location,
+                    description: vendorData.description,
+                    approved: vendorData.approved,
+                    // Use serverTimestamp() for reliable time
+                    updatedAt: serverTimestamp(), 
+                    // Add a creation timestamp only if it's a new document
+                    ...(docRef ? {} : { createdAt: serverTimestamp() }), 
+                };
 
-        onAuthStateChanged(auth, async (user) => {
-            loadingIndicator.classList.add('hidden');
-            mainApp.classList.remove('hidden');
-
-            if (user) {
-                userId = user.uid;
-                
-                // 1. Check/Set User Role
-                await loadOrCreateUserRole(user.uid);
-                
-                // 2. Render UI based on role
-                renderApp();
-
-            } else {
-                // Not authenticated yet, attempt sign-in
-                try {
-                    if (initialAuthToken) {
-                        // Designated Admin (Super Admin)
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        // Standard Vendor/User (Anonymous)
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error("Auth Error:", error);
-                    showMessage(`Authentication failed: ${error.message}`, true);
-                }
-            }
-            isAuthReady = true;
-        });
-
-        const loadOrCreateUserRole = async (uid) => {
-            const profileRef = getProfileDocRef(uid);
-            const profileSnap = await getDoc(profileRef);
-
-            if (profileSnap.exists()) {
-                userRole = profileSnap.data().role;
-            } else {
-                // New user - determine role based on token presence
-                if (initialAuthToken) {
-                    // First user with token is the Super Admin
-                    userRole = 'admin';
+                if (docRef) {
+                    await updateDoc(docRef, dataToSave);
+                    console.log("Document updated successfully:", vendorData.id);
                 } else {
-                    // Anonymous user is a pending vendor
-                    userRole = 'pending_vendor';
+                    const newDocRef = await addDoc(getVendorCollectionRef(), dataToSave);
+                    console.log("Document written with ID:", newDocRef.id);
                 }
-                await setDoc(profileRef, { role: userRole, userId: uid, createdAt: new Date().toISOString() });
+
+                showModal('Success', 'Vendor data saved successfully.', 'OK');
+                clearForm();
+            } catch (error) {
+                console.error("Error saving vendor:", error);
+                showModal('Error', 'Failed to save vendor data. Check console for details.', 'Close');
             }
         };
 
-        // --- VENDOR SIGN-UP FORM ---
+        const deleteVendor = async (vendorId) => {
+            const confirmed = await showModal(
+                'Confirm Deletion',
+                'Are you absolutely sure you want to delete this vendor? This cannot be undone.',
+                'Delete Permanently'
+            );
 
-        const renderVendorForm = () => {
-            authStatusElement.innerHTML = `Signed in as: <span class="font-mono text-xs">${userId}</span> | Status: <span class="font-bold text-yellow-600">Pending Approval</span>`;
-            contentArea.innerHTML = `
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Vendor Sign-Up</h2>
-                <p class="mb-6 text-gray-600">Please fill out the form below. Your request will be reviewed by an administrator. Your unique ID for this session is: <code class="font-mono bg-gray-100 p-1 rounded">${userId}</code></p>
-                <form id="vendor-form" class="space-y-4">
-                    <div>
-                        <label for="vendorName" class="block text-sm font-medium text-gray-700 mb-1">Vendor/Company Name</label>
-                        <input type="text" id="vendorName" required class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label for="contactEmail" class="block text-sm font-medium text-gray-700 mb-1">Contact Email (for welcome/approval email)</label>
-                        <input type="email" id="contactEmail" required class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Brief Description of Services</label>
-                        <textarea id="description" rows="3" required class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
-                    </div>
-                    <button type="submit" id="submit-btn" class="w-full py-2 px-4 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition duration-150">Submit for Approval</button>
-                </form>
-                <div id="vendor-info-status" class="mt-4 p-3 text-center rounded-md bg-blue-100 text-blue-800 hidden">
-                    Your sign-up is currently under review. Thank you!
-                </div>
-            `;
-            
-            const form = document.getElementById('vendor-form');
-            form.addEventListener('submit', handleVendorSubmit);
-
-            // Check if vendor data already exists in pending collection
-            const checkExisting = async () => {
-                const q = query(getPendingCollectionRef(), where("userId", "==", userId));
-                const querySnapshot = await getDocs(q);
-                if (!querySnapshot.empty) {
-                    form.classList.add('hidden');
-                    document.getElementById('vendor-info-status').classList.remove('hidden');
+            if (confirmed) {
+                try {
+                    await deleteDoc(doc(getVendorCollectionRef(), vendorId));
+                    console.log("Document deleted successfully:", vendorId);
+                    showModal('Deleted', 'Vendor has been successfully deleted.', 'OK');
+                    clearForm();
+                } catch (error) {
+                    console.error("Error deleting document:", error);
+                    showModal('Error', 'Failed to delete vendor. Check console for details.', 'Close');
                 }
-            };
-            checkExisting();
-        };
-
-        const handleVendorSubmit = async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const submitBtn = document.getElementById('submit-btn');
-            
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
-
-            const vendorName = form.vendorName.value;
-            const contactEmail = form.contactEmail.value;
-            const description = form.description.value;
-
-            try {
-                await addDoc(getPendingCollectionRef(), {
-                    userId: userId,
-                    name: vendorName,
-                    email: contactEmail,
-                    description: description,
-                    submittedAt: new Date().toISOString()
-                });
-
-                form.classList.add('hidden');
-                document.getElementById('vendor-info-status').textContent = "Your sign-up has been submitted and is awaiting admin approval!";
-                document.getElementById('vendor-info-status').classList.remove('hidden');
-                showMessage("Sign-up successful! Waiting for admin approval.", false);
-
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                showMessage("Error submitting sign-up. Please try again.", true);
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit for Approval';
             }
         };
 
-        // --- ADMIN DASHBOARD ---
-
-        const renderAdminDashboard = (pendingVendors) => {
-            authStatusElement.innerHTML = `Signed in as: <span class="font-mono text-xs">${userId}</span> | Role: <span class="admin-tag">SUPER ADMIN</span>`;
+        const renderVendorList = () => {
+            const { search, status } = currentFilter;
             
-            const pendingListHTML = pendingVendors.length > 0
-                ? pendingVendors.map(v => `
-                    <div class="vendor-item p-4 flex flex-col md:flex-row justify-between items-start md:items-center space-y-2 md:space-y-0">
-                        <div class="flex-grow">
-                            <p class="font-semibold text-gray-900">${v.name}</p>
-                            <p class="text-sm text-gray-600">Email: ${v.email}</p>
-                            <p class="text-xs text-gray-400">User ID: <span class="font-mono">${v.userId}</span></p>
-                            <p class="text-xs text-gray-400">Submitted: ${new Date(v.submittedAt).toLocaleString()}</p>
-                            <p class="text-sm mt-1 text-gray-700 italic">${v.description}</p>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button data-id="${v.id}" data-action="approve" class="py-1 px-3 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">Approve</button>
-                            <button data-id="${v.id}" data-action="reject" class="py-1 px-3 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600 transition">Reject</button>
-                        </div>
-                    </div>
-                `).join('')
-                : '<p class="p-4 text-center text-gray-500">No vendors currently pending approval. 🎉</p>';
-            
-            contentArea.innerHTML = `
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Admin Dashboard</h2>
-                
-                <div class="mb-6 space-y-2 sm:space-y-0 sm:space-x-4 flex flex-col sm:flex-row">
-                    <button id="export-csv" class="flex-1 py-2 px-4 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 transition duration-150">Export Pending as CSV</button>
-                    <button id="export-json" class="flex-1 py-2 px-4 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 transition duration-150">Export Pending as JSON</button>
-                    <a id="google-sheets-proxy" href="https://docs.google.com/forms/u/0/create?usp=pp_url" target="_blank" class="flex-1 py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition duration-150 text-center">
-                        Open Google Sheets (Manual Email Trigger)
-                    </a>
-                </div>
+            let filteredVendors = allVendors.filter(vendor => {
+                // 1. Search Filter
+                const searchTerm = search.toLowerCase();
+                const matchesSearch = !searchTerm || 
+                    vendor.name.toLowerCase().includes(searchTerm) || 
+                    vendor.description.toLowerCase().includes(searchTerm) ||
+                    vendor.category.toLowerCase().includes(searchTerm);
 
-                <h3 class="text-xl font-medium text-gray-800 mb-3 border-b pb-2">Pending Vendors (${pendingVendors.length})</h3>
-                <div id="pending-list" class="divide-y divide-gray-100 border border-gray-200 rounded-lg">
-                    ${pendingListHTML}
-                </div>
+                // 2. Status Filter
+                const matchesStatus = status === 'all' || 
+                    (status === 'approved' && vendor.approved) ||
+                    (status === 'pending' && !vendor.approved);
 
-                <h3 class="text-xl font-medium text-gray-800 mt-6 mb-3 border-b pb-2">Approved Vendors List</h3>
-                <p class="text-sm text-gray-500 mb-3">This list can be exported separately if needed for ongoing mailing lists.</p>
-                <div id="approved-vendors-list" class="text-gray-600">
-                    Loading approved vendors...
-                </div>
-            `;
+                return matchesSearch && matchesStatus;
+            });
             
-            // Attach event listeners for Approve/Reject
-            const pendingList = document.getElementById('pending-list');
-            pendingList.addEventListener('click', (e) => {
-                const target = e.target;
-                const id = target.getAttribute('data-id');
-                const action = target.getAttribute('data-action');
-                if (id && action) {
-                    const vendorData = pendingVendors.find(v => v.id === id);
-                    if (action === 'approve') {
-                        handleVendorAction(id, 'approve', vendorData);
-                    } else if (action === 'reject') {
-                        handleVendorAction(id, 'reject', vendorData);
-                    }
+            // Sort by approved status (pending first for admin attention) then by name
+            filteredVendors.sort((a, b) => {
+                if (a.approved !== b.approved) {
+                    return a.approved ? 1 : -1; // Pending (false) comes first
                 }
+                return a.name.localeCompare(b.name);
             });
 
-            // Attach event listeners for Export
-            document.getElementById('export-csv').addEventListener('click', () => {
-                // Ensure we include 'id' field for unique identifier in export
-                const exportData = pendingVendors.map(v => ({ id: v.id, userId: v.userId, name: v.name, email: v.email, description: v.description, submittedAt: v.submittedAt }));
-                const csvData = generateCSV(exportData);
-                downloadData(csvData, 'pending_vendors.csv', 'text/csv');
-            });
-            document.getElementById('export-json').addEventListener('click', () => {
-                const jsonData = JSON.stringify(pendingVendors.map(v => ({ id: v.id, userId: v.userId, name: v.name, email: v.email, description: v.description, submittedAt: v.submittedAt })), null, 2);
-                downloadData(jsonData, 'pending_vendors.json', 'application/json');
-            });
 
-            // Start listening to approved vendors
-            startApprovedVendorsListener();
-        };
-
-        const renderApprovedVendors = (approvedVendors) => {
-            const approvedList = document.getElementById('approved-vendors-list');
-            if (!approvedList) return; // Guard for non-admin view
-            
-            if (approvedVendors.length === 0) {
-                approvedList.innerHTML = '<p class="text-center text-gray-500 py-4">No vendors have been approved yet.</p>';
+            vendorListElement.innerHTML = '';
+            if (filteredVendors.length === 0) {
+                listMessage.textContent = 'No vendors match the current filters.';
+                vendorListElement.appendChild(listMessage);
+                listMessage.classList.remove('hidden');
                 return;
+            } else {
+                listMessage.classList.add('hidden');
             }
 
-            approvedList.innerHTML = approvedVendors.map(v => `
-                <div class="p-3 bg-gray-50 mb-2 rounded-md border border-gray-100">
-                    <p class="font-semibold text-blue-700">${v.name}</p>
-                    <p class="text-sm text-gray-600">Email: ${v.email}</p>
-                    <p class="text-xs text-gray-400">Approved: ${new Date(v.approvedAt).toLocaleDateString()}</p>
-                </div>
-            `).join('');
-        };
+            filteredVendors.forEach(vendor => {
+                const vendorCard = document.createElement('div');
+                vendorCard.className = `p-4 rounded-xl shadow-md transition duration-150 ease-in-out border ${vendor.approved ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`;
+                
+                const statusBadge = `<span class="px-2 py-0.5 text-xs font-semibold rounded-full ${vendor.approved ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}">
+                    ${vendor.approved ? 'APPROVED' : 'PENDING'}
+                </span>`;
 
-        const handleVendorAction = async (docId, action, vendorData) => {
-            try {
-                // 1. Delete from pending_vendors
-                await deleteDoc(doc(getPendingCollectionRef(), docId));
-
-                if (action === 'approve') {
-                    // 2. Add to approved_vendors
-                    await setDoc(doc(getApprovedCollectionRef(), docId), {
-                        ...vendorData,
-                        approvedBy: userId,
-                        approvedAt: new Date().toISOString()
-                    });
-
-                    // 3. Update the vendor's role to 'vendor'
-                    const profileRef = getProfileDocRef(vendorData.userId);
-                    // Only update the user profile if they still exist (haven't cleared cache/left the page)
-                    await updateDoc(profileRef, { role: 'vendor' });
-
-                    showMessage(`Vendor '${vendorData.name}' has been APPROVED and granted vendor access.`, false);
-                } else if (action === 'reject') {
-                    // 2. Only delete from pending_vendors. The user keeps the 'pending_vendor' role.
-                    showMessage(`Vendor '${vendorData.name}' has been REJECTED.`, false);
-                }
-
-            } catch (e) {
-                console.error(`Error performing ${action} action: `, e);
-                showMessage(`Failed to process vendor action: ${e.message}. Note: The pending entry was removed.`, true);
-            }
-        };
-
-        // --- FIRESTORE LISTENERS ---
-
-        const startPendingVendorsListener = () => {
-            if (unsubscribePending) unsubscribePending(); // Cleanup old listener
-            const q = query(getPendingCollectionRef());
-            
-            unsubscribePending = onSnapshot(q, (snapshot) => {
-                const pendingVendors = [];
-                snapshot.forEach((doc) => {
-                    // Add document ID to the data object
-                    pendingVendors.push({ id: doc.id, ...doc.data() });
-                });
-                // Rerender the admin dashboard with new data
-                if (userRole === 'admin') {
-                    renderAdminDashboard(pendingVendors);
-                }
-            }, (error) => {
-                console.error("Error listening to pending vendors:", error);
-                showMessage("Cannot load pending vendors in real-time.", true);
-            });
-        };
-
-        const startApprovedVendorsListener = () => {
-            if (unsubscribeApproved) unsubscribeApproved(); // Cleanup old listener
-            const q = query(getApprovedCollectionRef());
-            
-            unsubscribeApproved = onSnapshot(q, (snapshot) => {
-                const approvedVendors = [];
-                snapshot.forEach((doc) => {
-                    approvedVendors.push({ id: doc.id, ...doc.data() });
-                });
-                // Rerender the approved vendors list
-                if (userRole === 'admin') {
-                    renderApprovedVendors(approvedVendors);
-                }
-            }, (error) => {
-                console.error("Error listening to approved vendors:", error);
-                showMessage("Cannot load approved vendors in real-time.", true);
-            });
-        };
-
-        // --- MAIN RENDER FUNCTION ---
-
-        const renderApp = () => {
-            if (!isAuthReady) return;
-
-            // Stop any existing listeners before rendering a new view
-            if (unsubscribePending) unsubscribePending();
-            if (unsubscribeApproved) unsubscribeApproved();
-
-            if (userRole === 'admin') {
-                startPendingVendorsListener(); // This will trigger the first renderAdminDashboard
-            } else if (userRole === 'pending_vendor') {
-                renderVendorForm();
-            } else if (userRole === 'vendor') {
-                // Approved Vendor View
-                authStatusElement.innerHTML = `Signed in as: <span class="font-mono text-xs">${userId}</span> | Status: <span class="font-bold text-green-600">Approved Vendor</span>`;
-                contentArea.innerHTML = `
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Welcome, Approved Vendor!</h2>
-                    <p class="text-gray-600">Your account is active. You can now access vendor resources.</p>
-                    <div class="mt-4 p-4 rounded-md bg-green-50 border border-green-200 text-green-800">
-                        <p class="font-medium">Account Status: Active</p>
-                        <p class="text-sm">This is where you would place specific tools or links for approved vendors.</p>
+                vendorCard.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-bold text-gray-800">${vendor.name}</h3>
+                        ${statusBadge}
+                    </div>
+                    <p class="text-sm text-gray-600 mb-1"><strong>Category:</strong> ${vendor.category}</p>
+                    <p class="text-sm text-gray-600 mb-2"><strong>Location:</strong> ${vendor.location}</p>
+                    <p class="text-sm text-gray-500 mb-3 line-clamp-2">${vendor.description}</p>
+                    
+                    <div class="flex space-x-2">
+                        <button data-id="${vendor.id}" data-action="edit" class="edit-btn text-sm font-medium text-primary-blue hover:text-blue-700 transition duration-150">Edit</button>
+                        <span class="text-gray-300">|</span>
+                        <button data-id="${vendor.id}" data-action="delete" class="delete-btn text-sm font-medium text-red-600 hover:text-red-800 transition duration-150">Delete</button>
                     </div>
                 `;
-            } else {
-                // Fallback for unknown state
-                authStatusElement.textContent = `User ID: ${userId} | Status: Unknown Role`;
-                contentArea.innerHTML = `<p class="text-center text-red-500">Your user role could not be determined or is invalid. Please contact support.</p>`;
+                vendorListElement.appendChild(vendorCard);
+            });
+        };
+
+        // --- Event Handlers ---
+
+        const loadVendorToForm = (vendor) => {
+            document.getElementById('vendor-id').value = vendor.id || '';
+            document.getElementById('name').value = vendor.name || '';
+            document.getElementById('category').value = vendor.category || '';
+            document.getElementById('contact').value = vendor.contact || '';
+            document.getElementById('location').value = vendor.location || '';
+            document.getElementById('description').value = vendor.description || '';
+            document.getElementById('approved').checked = vendor.approved || false;
+            submitButton.textContent = vendor.id ? 'Update Vendor' : 'Add Vendor';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        const clearForm = () => {
+            vendorForm.reset();
+            document.getElementById('vendor-id').value = '';
+            submitButton.textContent = 'Add Vendor';
+            vendorToEdit = null;
+        };
+        
+        const handleFormSubmit = async (e) => {
+            e.preventDefault();
+            submitButton.disabled = true;
+            submitButton.textContent = submitButton.textContent.includes('Update') ? 'Updating...' : 'Adding...';
+
+            const id = document.getElementById('vendor-id').value;
+            const name = document.getElementById('name').value.trim();
+            const category = document.getElementById('category').value;
+            const contact = document.getElementById('contact').value.trim();
+            const location = document.getElementById('location').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const approved = document.getElementById('approved').checked;
+
+            await saveVendor({ id, name, category, contact, location, description, approved });
+
+            submitButton.disabled = false;
+            submitButton.textContent = id ? 'Update Vendor' : 'Add Vendor';
+        };
+
+        const handleListClick = (e) => {
+            const target = e.target;
+            const action = target.getAttribute('data-action');
+            const vendorId = target.getAttribute('data-id');
+
+            if (action && vendorId) {
+                const vendor = allVendors.find(v => v.id === vendorId);
+                if (!vendor) return;
+
+                if (action === 'edit') {
+                    loadVendorToForm(vendor);
+                } else if (action === 'delete') {
+                    deleteVendor(vendorId);
+                }
             }
         };
+        
+        const handleFilterChange = () => {
+            currentFilter.search = searchInput.value.trim();
+            currentFilter.status = filterStatus.value;
+            renderVendorList();
+        };
+
+        // --- Initialization and Real-time Listener ---
+
+        const setupRealtimeListener = () => {
+            const vendorsQuery = query(getVendorCollectionRef());
+
+            onSnapshot(vendorsQuery, (snapshot) => {
+                allVendors = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                console.log("Realtime update received. Total vendors:", allVendors.length);
+                renderVendorList();
+            }, (error) => {
+                console.error("Firestore realtime listener failed:", error);
+                errorMessage.textContent = "Error fetching data. See console.";
+                errorMessage.classList.remove('hidden');
+            });
+        };
+
+        const initApp = () => {
+            // All Firebase setup is complete. Hide loading screen and show the app.
+            userIdDisplay.textContent = userId;
+            loadingScreen.classList.add('opacity-0');
+            appContainer.classList.add('opacity-100');
+            setTimeout(() => loadingScreen.classList.add('hidden'), 300);
+
+            // Set up all event listeners
+            vendorForm.addEventListener('submit', handleFormSubmit);
+            clearButton.addEventListener('click', clearForm);
+            vendorListElement.addEventListener('click', handleListClick);
+            searchInput.addEventListener('input', handleFilterChange);
+            filterStatus.addEventListener('change', handleFilterChange);
+            
+            // Start the real-time data listener
+            setupRealtimeListener();
+            
+            console.log("Admin Application Initialized.");
+        };
+
+        // --- Core Firebase Initialization Logic (Self-Executing Function) ---
+        (async () => {
+            try {
+                // 1. Check Config
+                if (!firebaseConfig) {
+                    throw new Error("Firebase configuration (__firebase_config) is not defined.");
+                }
+                
+                // Set Firebase logging level to help with debugging
+                setLogLevel('debug');
+                
+                // 2. Initialize Firebase
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Set persistence to session to avoid re-auth on every refresh
+                await setPersistence(auth, browserSessionPersistence);
+
+                // 3. Authentication
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                    console.log("Signed in with custom token.");
+                } else {
+                    await signInAnonymously(auth);
+                    console.warn("No custom token found. Signed in anonymously.");
+                }
+
+                // 4. Get User ID
+                // Wait for the auth state to settle after sign-in
+                await new Promise(resolve => {
+                    const unsubscribe = onAuthStateChanged(auth, user => {
+                        if (user) {
+                            userId = user.uid;
+                            unsubscribe(); // Stop listening once we have the user
+                            resolve();
+                        } else {
+                            // If user is null (shouldn't happen immediately after sign-in), we use a fallback
+                            userId = crypto.randomUUID();
+                            unsubscribe();
+                            resolve();
+                        }
+                    });
+                });
+                
+                // 5. Start the Application
+                initApp();
+
+            } catch (error) {
+                console.error("CRITICAL FIREBASE INITIALIZATION ERROR:", error);
+                loadingScreen.innerHTML = `
+                    <div class="p-6 bg-red-100 border-l-4 border-red-500 text-red-700 max-w-xl mx-auto rounded-lg shadow-lg">
+                        <p class="font-bold text-lg">Initialization Failed</p>
+                        <p class="text-sm mt-2">Could not connect to the database. Please check the console for critical error details.</p>
+                        <p class="mt-4 font-mono text-xs break-all">Error: ${error.message}</p>
+                    </div>
+                `;
+                loadingScreen.classList.remove('opacity-0');
+                loadingScreen.classList.remove('hidden');
+                loadingScreen.classList.add('flex');
+            }
+        })();
 
     </script>
 </body>
